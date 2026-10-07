@@ -1,0 +1,37 @@
+name: 棋牌服务器与内网穿透
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ai-qipai-server
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 运行服务器与第二个隧道 client
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_REPO: ${{ github.repository }}
+          TUNNEL_UDID: ${{ secrets.TUNNEL_UDID }}
+          TUNNEL_TOKEN: ${{ secrets.TUNNEL_TOKEN }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          NODE_ENV: production
+        run: bash my-server/tunnel/run.sh

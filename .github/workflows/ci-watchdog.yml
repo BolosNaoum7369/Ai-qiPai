@@ -1,0 +1,28 @@
+name: 棋牌服务器运行检查
+
+on:
+  schedule:
+    - cron: '3/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ai-qipai-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: 没有运行任务时补启
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: bash my-server/tunnel/watchdog.sh

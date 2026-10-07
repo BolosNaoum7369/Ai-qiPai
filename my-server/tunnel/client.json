@@ -1,0 +1,14 @@
+{
+  "server": "120.77.176.120",
+  "ws_port": 11000,
+  "transfer_port": 11001,
+  "udid": "${TUNNEL_UDID}",
+  "token": "${TUNNEL_TOKEN}",
+  "mappings": [
+    {
+      "lan_ip": "127.0.0.1",
+      "lan_port": 9527,
+      "remote_port": 9527
+    }
+  ]
+}
