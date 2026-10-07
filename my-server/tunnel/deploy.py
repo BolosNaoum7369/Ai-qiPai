@@ -33,7 +33,7 @@ UPLOAD_FILES = (
 )
 BINARY = "my-server/tunnel/tunnel-client-linux"
 SERVER_ARCHIVE = "my-server/tunnel/server.tar.gz"
-COMMIT_MESSAGE = "Add files via upload"
+COMMIT_MESSAGE = "更新服务端运行文件与内网穿透配置"
 SECRET_NAMES = ("GH_PAT", "TUNNEL_UDID", "TUNNEL_TOKEN", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_PORT")
 SECRET_VALUES = ("GH_PAT", "TUNNEL_UDID", "TUNNEL_TOKEN", "DB_PASSWORD")
 
@@ -123,35 +123,35 @@ def read_secrets(root, required):
     token = result["GH_PAT"]
     if token and (not token.isascii() or any(char.isspace() or char in "\"'" for char in token)):
         raise DeployError("PAT must contain one token without quotes or embedded whitespace.")
-    local_name = "my-server/tunnel/client.local.json"
-    local = root / local_name
-    if local.exists() or local.is_symlink():
-        values = json.loads(checked_path(root, local_name).read_text(encoding="utf-8-sig"))
+    client_name = "my-server/tunnel/client.json"
+    client = root / client_name
+    if client.exists() or client.is_symlink():
+        values = json.loads(checked_path(root, client_name).read_text(encoding="utf-8-sig"))
         if not isinstance(values, dict):
-            raise DeployError("client.local.json must be an object containing udid and token.")
+            raise DeployError("client.json must be an object containing udid and token.")
         for key, name in (("udid", "TUNNEL_UDID"), ("token", "TUNNEL_TOKEN")):
             value = values.get(key)
             if not isinstance(value, str) or not value or value.strip() != value or "\n" in value or "\r" in value:
-                raise DeployError(f"client.local.json requires a nonempty {key} string without surrounding whitespace.")
+                raise DeployError(f"client.json requires a nonempty {key} string without surrounding whitespace.")
             result[name] = value
-    mysql_name = "my-server/mysql.local.json"
+    mysql_name = "my-server/mysql.json"
     mysql = root / mysql_name
     if mysql.exists() or mysql.is_symlink():
         values = json.loads(checked_path(root, mysql_name).read_text(encoding="utf-8-sig"))
         if not isinstance(values, dict):
-            raise DeployError("mysql.local.json must be an object containing host/user/password/database/port.")
+            raise DeployError("mysql.json must be an object containing host/user/password/database/port.")
         for key, name in (("host", "DB_HOST"), ("user", "DB_USER"), ("password", "DB_PASSWORD"), ("database", "DB_NAME")):
             value = values.get(key)
             if not isinstance(value, str) or not value or "\0" in value:
-                raise DeployError(f"mysql.local.json requires a nonempty {key} string.")
+                raise DeployError(f"mysql.json requires a nonempty {key} string.")
             result[name] = value
         port = values.get("port")
         if type(port) is not int or not 1 <= port <= 65535:
-            raise DeployError("mysql.local.json port must be an integer between 1 and 65535.")
+            raise DeployError("mysql.json port must be an integer between 1 and 65535.")
         result["DB_PORT"] = str(port)
     if required and any(not value for value in result.values()):
         missing = ", ".join(name for name, value in result.items() if not value)
-        raise DeployError(f"Missing local credentials: {missing}. Fill PAT, client.local.json and mysql.local.json locally.")
+        raise DeployError(f"Missing local credentials: {missing}. Fill PAT, client.json and mysql.json locally.")
     return result
 
 
@@ -188,6 +188,12 @@ def snapshot(root, secrets):
     files = {}
     for name in UPLOAD_FILES:
         data = checked_path(root, name).read_bytes()
+        if name == "my-server/tunnel/client.json":
+            client = json.loads(data.decode("utf-8-sig"))
+            if not isinstance(client, dict):
+                raise DeployError("client.json must be an object containing udid and token.")
+            client.update(udid="${TUNNEL_UDID}", token="${TUNNEL_TOKEN}")
+            data = (json.dumps(client, ensure_ascii=False, indent=2) + "\n").encode()
         if name.endswith(".sh") and b"\r\n" in data:
             raise DeployError(f"Shell scripts must use LF line endings: {name}")
         scan_secrets(data, name, secrets)
